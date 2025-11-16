@@ -87,19 +87,20 @@ struct ustar_header_t {
     char devmin[8];   // Minor device ID
     char prefix[155]; // Path name, no trailing slashes
     char pad[12];     // To 512 bytes
+
     // Always a static file, no folder, with fixed fields
     // To be useful, fill the name, size and sum of header + file itself
     void init() {
         memset(this, 0, sizeof(*this));
-        sprintf(mode, "0000444"); // readable
-        sprintf(uid, "0012345");  // made up
-        sprintf(gid, "0012345");  // made up
+        sprintf(mode, "0000644");
+        sprintf(uid, "0001234");  // made up
+        sprintf(gid, "0001234");  // made up
         // Skip the size
-        sprintf(mtime, "15106207333"); // Sat Nov 15 23:38:03 2025 UTC
+        sprintf(mtime, "15106450176"); // Sat Nov 15 23:38:03 2025 UTC
         memset(sum, ' ', 8); // Init with spaces before computing the sum
-        typeflag = 0; // Regular file
+        typeflag = '0'; // Regular file
         sprintf(sig, "ustar"); // null terminated
-        sprintf(version, "00");
+        sprintf(version, "00"); // the username will overwrite the null
         sprintf(uname, "user");
         sprintf(gname, "users");
         sprintf(devmaj, "0000000");
@@ -110,7 +111,6 @@ struct ustar_header_t {
 
 static int handler(request_rec *r)
 {
-
     if (r->method_number != M_GET)
         return DECLINED;
 
@@ -159,7 +159,25 @@ static int handler(request_rec *r)
             // returns APR_SUCCESS if all worked, otherwise error
             tile.x = x;
             tile.y = y;
-            auto result = get_remote_tile(r, cfg->source, tile, tile_sm, nullptr, cfg->suffix);
+            char* ETag; 
+            auto result = get_remote_tile(r, cfg->source, tile, tile_sm, &ETag, cfg->suffix);
+            // If a relocation is is returned and a location returned, chase the pointer
+            if ((HTTP_MOVED_PERMANENTLY == result || HTTP_MOVED_TEMPORARILY == result)
+                && ETag && ETag[0])
+            {
+                string local_url(ETag);
+                // This normally contains protocol://host:port/path, where host should be localhost
+                // We just need the /path part
+                auto off = local_url.find("//"); // The ones after protocol
+                if (off != string::npos)
+                    off = local_url.find('/', off + 2); // The one before path
+                if (off) {
+                    // Reset the storage manager size
+                    tile_sm.size = cfg->raster.maxtilesize;
+                    result = get_response(r, local_url.c_str() + off, tile_sm);
+                }
+            }
+            // This will skip input tiles that are too large for the buffer
             if (APR_SUCCESS != result || tile_sm.size == 0)
                 continue; // Ignore errors, missing tiles or possibly input tiles are too big
             // Got a tile, size is in tile_sm.size
@@ -168,23 +186,18 @@ static int handler(request_rec *r)
                 ap_set_content_type(r, "application/tar");
             }
             tarheader.init(); // Reset header
-            uint32_t sum(0);
-            uint8_t* v = (uint8_t *)tile_sm.buffer;
-            for (int i = 0; i < tile_sm.size; i++)
-                sum += v[i];
             // File name, esri tile style
-            printf(tarheader.name, "R%04xdC%04xd.jpg", y, x);
+            sprintf(tarheader.name, "R%04xC%04x.jpg", y, x);
             // Fill in the size, 12 octal chars, null terminated
-            printf(tarheader.size, "%011o", tile_sm.size);
+            sprintf(tarheader.size, "%011o", int(tile_sm.size));
             // Update the checksum over the header
-            v = (uint8_t*)&tarheader;
+            uint32_t sum(0);
+            auto v = (uint8_t*)&tarheader;
             for (int i = 0; i < sizeof(tarheader); i++)
                 sum += v[i];
-            // Fill it in
-            printf(tarheader.sum, "%07o", sum);
-            // Send the header
+            // Keep no more than 7 octal digits to avoid overflow
+            sprintf(tarheader.sum, "%07o", sum & 07777777);
             ap_rwrite(&tarheader, sizeof(tarheader), r);
-            // Then the file
             ap_rwrite(tile_sm.buffer, (int)tile_sm.size, r);
             size += 512 + tile_sm.size;
             // Zero padded to 512 bytes
@@ -202,6 +215,18 @@ static int handler(request_rec *r)
     // Done writing
     ap_rflush(r);
     return OK;
+}
+
+static const char* configure(cmd_parms* cmd, conf_t* c, const char* fname) {
+    const char* err_message;
+    apr_table_t* kvp = readAHTSEConfig(cmd->temp_pool, fname, &err_message);
+    if (!kvp)
+        return err_message;
+
+    err_message = configRaster(cmd->pool, kvp, c->raster);
+    if (err_message)
+        return err_message;
+    return NULL;
 }
 
 static void register_hooks(apr_pool_t *p)
@@ -232,6 +257,13 @@ static const command_rec cmds[] = {
         0,
         ACCESS_CONF,
         "Set the source and suffix URL for tile retrieval"
+    ),
+    AP_INIT_TAKE1(
+        "TarTiles_ConfigurationFile",
+        (cmd_func) configure,
+        0,
+        ACCESS_CONF,
+        "Raster configuration file"
     ),
     { nullptr }
 };
