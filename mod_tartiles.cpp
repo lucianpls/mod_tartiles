@@ -222,7 +222,6 @@ static const char* configure(cmd_parms* cmd, conf_t* c, const char* fname) {
     apr_table_t* kvp = readAHTSEConfig(cmd->temp_pool, fname, &err_message);
     if (!kvp)
         return err_message;
-
     err_message = configRaster(cmd->pool, kvp, c->raster);
     if (err_message)
         return err_message;
