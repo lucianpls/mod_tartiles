@@ -9,4 +9,10 @@ zero prefixed if needed.
 
 When deployed collocated or near a standard tile service, this module 
 can improve the performance of GIS applications that needs to request
-multiple tiles in a local area. It avoids the problems related to making multiple requests in parallel, and can decrease the server overhead also.
+multiple tiles in a local area. It avoids the problems related to making multiple requests in parallel, and can also decrease the server overhead.
+While changes are needed in a client application to make use of this
+type of response, the changes are only related to the fetching of data, the returned tiles can simply continue to be used as single JPEG tiles would be used.
+
+The response format is the tar format "ustar", a concatenation of the JPEG tiles padded to the next multiple of 512 bytes, each tile prefixed by a 512 byte header that starts with the file name. This format was chosen because it can be streamed by the server, tile at a time, without having to know the full content. Unpacking and JPEG use can also start as soon as some data is received, without having to wait for the complete response.
+
+The tartiles module allows the server configuration to specify what is the maximum value for width and height, avoiding full data download requests.
