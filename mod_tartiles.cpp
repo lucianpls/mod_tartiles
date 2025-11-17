@@ -100,7 +100,7 @@ struct ustar_header_t {
         memset(sum, ' ', 8); // Init with spaces before computing the sum
         typeflag = '0'; // Regular file
         sprintf(sig, "ustar"); // null terminated
-        sprintf(version, "00"); // the username will overwrite the null
+        version[0] = version[1] = '0'; // Not terminated
         sprintf(uname, "user");
         sprintf(gname, "users");
         sprintf(devmaj, "0000000");
@@ -193,11 +193,11 @@ static int handler(request_rec *r)
             // Update the checksum over the header
             uint32_t sum(0);
             auto v = (uint8_t*)&tarheader;
-            for (int i = 0; i < sizeof(tarheader); i++)
+            for (int i = 0; i < int(sizeof(tarheader)); i++)
                 sum += v[i];
             // Keep no more than 7 octal digits to avoid overflow
             sprintf(tarheader.sum, "%07o", sum & 07777777);
-            ap_rwrite(&tarheader, sizeof(tarheader), r);
+            ap_rwrite(&tarheader, int(sizeof(tarheader)), r);
             ap_rwrite(tile_sm.buffer, (int)tile_sm.size, r);
             size += 512 + tile_sm.size;
             // Zero padded to 512 bytes
