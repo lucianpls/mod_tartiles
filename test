@@ -1,1 +1,6 @@
-wget -SOtest.tar http://localhost/tar/tiles/5/0/0/7/4
+# Setup for gzip
+# SetOutputFilter DEFLATE
+# In the right location:
+# AddOutputFilterByType DEFLATE application/tar
+time wget --debug -SOtest.tar --header="Accept-Encoding: deflate, gzip" http://localhost/tar/tiles/5/0/0/20/4
+# time wget --debug -SOtest.tar http://localhost/tar/tiles/5/0/0/20/4
