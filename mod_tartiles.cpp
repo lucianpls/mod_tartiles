@@ -187,7 +187,7 @@ static int handler(request_rec *r)
             }
             tarheader.init(); // Reset header
             // File name, esri tile style
-            sprintf(tarheader.name, "R%04xC%04x.jpg", y, x);
+            sprintf(tarheader.name, "L%02d/R%04xC%04x.jpg", int(tile.l), y, x);
             // Fill in the size, 12 octal chars, null terminated
             sprintf(tarheader.size, "%011o", int(tile_sm.size));
             // Update the checksum over the header
