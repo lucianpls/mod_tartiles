@@ -196,7 +196,8 @@ static int handler(request_rec *r)
                 if (memcmp(tile_sm.buffer, "\x89PNG\x0d\x0a\x1a\x0a", 8) == 0)
                     ext = ".png";
                 // test for LERC
-                if (memcmp(tile_sm.buffer, "CntZImage ", 10) == 0)
+                if ((memcmp(tile_sm.buffer, "CntZImage ", 10) == 0)
+                    || (memcmp(tile_sm.buffer, "Lerc2", 5) == 0))
                     ext = ".lerc";
                 // test for QB3
                 if (memcmp(tile_sm.buffer, "QB3\200", 4) == 0)
