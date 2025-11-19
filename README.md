@@ -58,8 +58,10 @@ If set, the module activates only on subrequests. Default is off.
 The source for the tile data, where Redirect_path is the path prefix to be replaced. Suffix is optional, literal
 string to append after Level/Row/Column
 
-## AHTSE Configuration File Directives
+* *TarTiles_ConfigurationFile* path
+Path to an AHTSE configuration file describing the raster source to use
 
+## AHTSE Configuration File Directives
 In addition to the standard AHTSE raster configuration directives, the following are supported:
 
 * *MaxTileSize* n  
