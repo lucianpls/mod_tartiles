@@ -67,7 +67,7 @@ static int get_bbox(request_rec *r, aoi_t& loc, int need_m = 0)
     return OK;
 }
 
-// A 512 bytes standard ustar header
+// A 512 bytes posix tar header
 struct ustar_header_t {
     char name[100];
     char mode[8];    // File mode
@@ -185,19 +185,24 @@ static int handler(request_rec *r)
             if (size == 0) { // Sending some data, set the headers
                 // Mime type is application/tar
                 ap_set_content_type(r, "application/tar");
+                // Add cors header by default. Can be overwritten by apache header module
+                apr_table_setn(r->headers_out, "Access-Control-Allow-Origin", "*");
             }
             tarheader.init(); // Reset header
             // File name, esri tile style
             sprintf(tarheader.name, "L%02d/R%04xC%04x.jpg", int(tile.l), y, x);
             // Fill in the size, 12 octal chars, null terminated
             sprintf(tarheader.size, "%011o", int(tile_sm.size));
+
             // Update the checksum over the header
+            // This is required if the output is to be read by standard tar tools
             uint32_t sum(0);
             auto v = (uint8_t*)&tarheader;
             for (int i = 0; i < int(sizeof(tarheader)); i++)
                 sum += v[i];
             // Keep no more than 7 octal digits to avoid overflow
             sprintf(tarheader.sum, "%07o", sum & 07777777);
+
             ap_rwrite(&tarheader, int(sizeof(tarheader)), r);
             ap_rwrite(tile_sm.buffer, (int)tile_sm.size, r);
             size += 512 + tile_sm.size;
@@ -238,14 +243,13 @@ static const char* configure(cmd_parms* cmd, conf_t* c, const char* fname) {
             return "maxtiles too large";
         if (apr_atoi64(line) == 0)
             return "maxtiles cannot be zero";
-        c->maxtiles = apr_atoi64(line);
+        c->maxtiles = int(apr_atoi64(line));
     }
 
     return NULL;
 }
 
-static void register_hooks(apr_pool_t *p)
-{
+static void register_hooks(apr_pool_t *p) {
     // Needs to go somewhere, this will do
     static_assert(sizeof(ustar_header_t) == 512, "Header member alignment is wrong");
     ap_hook_handler(handler, nullptr, nullptr, APR_HOOK_MIDDLE);
