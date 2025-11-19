@@ -189,8 +189,25 @@ static int handler(request_rec *r)
                 apr_table_setn(r->headers_out, "Access-Control-Allow-Origin", "*");
             }
             tarheader.init(); // Reset header
+            // Look at the file signature, add extension accordingly
+            const char* ext = ".jpg"; // Default, might be wrong
+            if (tile_sm.size >= 8) {
+                // PNG signature
+                if (memcmp(tile_sm.buffer, "\x89PNG\x0d\x0a\x1a\x0a", 8) == 0)
+                    ext = ".png";
+                // test for LERC
+                if (memcmp(tile_sm.buffer, "CntZImage ", 10) == 0)
+                    ext = ".lerc";
+                // test for QB3
+                if (memcmp(tile_sm.buffer, "QB3\200", 4) == 0)
+                    ext = ".qb3";
+                // test for brunsli, 0a 04 42 d2 d5 4e
+                if (memcmp(tile_sm.buffer, "\x0a\x04\x42\xd2\xd5\x4e", 6) == 0)
+                    ext = ".brn";
+            }
+
             // File name, esri tile style
-            sprintf(tarheader.name, "L%02d/R%04xC%04x.jpg", int(tile.l), y, x);
+            sprintf(tarheader.name, "L%02d/R%04xC%04x%s", int(tile.l), y, x, ext);
             // Fill in the size, 12 octal chars, null terminated
             sprintf(tarheader.size, "%011o", int(tile_sm.size));
 
