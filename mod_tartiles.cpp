@@ -68,7 +68,7 @@ static int get_bbox(request_rec *r, aoi_t& loc, int need_m = 0)
 }
 
 // A 512 bytes posix tar header
-struct ustar_header_t {
+struct tarheader_t {
     char name[100];
     char mode[8];    // File mode
     char uid[8];     // User id
@@ -95,7 +95,7 @@ struct ustar_header_t {
         sprintf(uid, "0001234");  // made up
         sprintf(gid, "0001234");  // made up
         // Skip the size
-        sprintf(mtime, "15106450176"); // Sat Nov 15 23:38:03 2025 UTC
+        sprintf(mtime, "15106450176"); // Monday, September 14, 2448 4:09:36 AM
         memset(sum, ' ', 8); // Init with spaces before computing the sum
         typeflag = '0'; // Regular file
         sprintf(sig, "ustar"); // null terminated
@@ -151,7 +151,7 @@ static int handler(request_rec *r)
     tile.z = aio.m; // Just in case
     tile.l = aio.l;
     // On the stack
-    ustar_header_t tarheader = {};
+    tarheader_t tarheader = {};
     apr_size_t size = 0; // Sent bytes
     for (int y = int(aio.r); y < int(aio.r + aio.h); ++y) {
         for (int x = int(aio.c); x < int(aio.c + aio.w); ++x) {
@@ -269,7 +269,7 @@ static const char* configure(cmd_parms* cmd, conf_t* c, const char* fname) {
 
 static void register_hooks(apr_pool_t *p) {
     // Needs to go somewhere, this will do
-    static_assert(sizeof(ustar_header_t) == 512, "Header member alignment is wrong");
+    static_assert(sizeof(tarheader_t) == 512, "Header member alignment is wrong");
     ap_hook_handler(handler, nullptr, nullptr, APR_HOOK_MIDDLE);
 }
 
