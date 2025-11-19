@@ -63,8 +63,7 @@ static int get_bbox(request_rec *r, aoi_t& loc, int need_m = 0)
     loc.l = apr_atoi64(ARRAY_POP(tokens, char*)); if (errno) return errno;
     loc.m = need_m ? apr_atoi64(ARRAY_POP(tokens, char*)) : 0;
     // M defaults to 0
-    if (errno)
-        loc.m = 0;
+    loc.m = errno ? 0 : loc.m;
     return OK;
 }
 
@@ -138,7 +137,9 @@ static int handler(request_rec *r)
     // Box has to be contained in the level
     if ((aio.r + aio.h >= level.h) || (aio.c + aio.w >= level.w))
         return HTTP_BAD_REQUEST;
-    
+    // Reject if too many tiles on either dimension
+    if (aio.h > uint64_t(cfg->maxtiles) || aio.w > uint64_t(cfg->maxtiles))
+        return HTTP_BAD_REQUEST;
 
     // Get the tiles, build simple ustar stream
     storage_manager tile_sm;
@@ -201,8 +202,10 @@ static int handler(request_rec *r)
             ap_rwrite(tile_sm.buffer, (int)tile_sm.size, r);
             size += 512 + tile_sm.size;
             // Zero padded to 512 bytes
-            if (tile_sm.size % 512) { // zero pad to 512 bytes
+            if (tile_sm.size % 512) {
+                // zero pad to next 512 bytes boundary
                 auto pad_size = int(512 - tile_sm.size % 512);
+                // Use the buffer, there is enough space
                 memset(tile_sm.buffer, 0, pad_size);
                 ap_rwrite(tile_sm.buffer, pad_size, r);
                 size += pad_size;
@@ -225,6 +228,19 @@ static const char* configure(cmd_parms* cmd, conf_t* c, const char* fname) {
     err_message = configRaster(cmd->pool, kvp, c->raster);
     if (err_message)
         return err_message;
+
+    // Get the max number of tiles, if present
+    const char* line;
+    line = apr_table_get(kvp, "maxtiles");
+    if (line) {
+        // Set some reasonable limit, this is 1e6 tiles in a single request
+        if (apr_atoi64(line) > 1024)
+            return "maxtiles too large";
+        if (apr_atoi64(line) == 0)
+            return "maxtiles cannot be zero";
+        c->maxtiles = apr_atoi64(line);
+    }
+
     return NULL;
 }
 
