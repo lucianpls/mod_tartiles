@@ -91,20 +91,20 @@ struct tarheader_t {
     // To be useful, fill the name, size and sum of header + file itself
     void init() {
         memset(this, 0, sizeof(*this));
-        sprintf(mode, "0000644");
-        sprintf(uid, "0001234");  // made up
-        sprintf(gid, "0001234");  // made up
-        // Skip the size
-        sprintf(mtime, "15106450176"); // Friday, November 14, 2025 13:52:44.406
-        memset(sum, ' ', 8); // Init with spaces before computing the sum
+        memcpy(mode, "0000644", 8);
+        memcpy(uid, "0001234", 8); // Made up uid/gid
+        memcpy(gid, "0001234", 8);
+        memcpy(size,  "00000000000", 12);
+        memcpy(mtime, "15106450176", 12); // Friday, November 14, 2025 13:52:44.406
+        memcpy(sum, "        ", 8); // 8 spaces for checksum calculation
         typeflag = '0'; // Regular file
-        sprintf(sig, "ustar"); // null terminated
+        memcpy(sig, "ustar", 6); // null terminated
         version[0] = version[1] = '0'; // Not terminated
-        sprintf(uname, "user");
-        sprintf(gname, "users");
-        sprintf(devmaj, "0000000");
-        sprintf(devmin, "0000000");
-        // Prefix is always empty
+        memcpy(uname, "user", 5);
+        memcpy(gname, "users", 6);
+        memcpy(devmaj, "0000000", 8);
+        memcpy(devmin, "0000000", 8);
+        // The rest is zero
     };
 };
 
