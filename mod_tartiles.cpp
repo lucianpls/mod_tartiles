@@ -95,7 +95,7 @@ struct tarheader_t {
         sprintf(uid, "0001234");  // made up
         sprintf(gid, "0001234");  // made up
         // Skip the size
-        sprintf(mtime, "15106450176"); // Monday, September 14, 2448 4:09:36 AM
+        sprintf(mtime, "15106450176"); // Friday, November 14, 2025 13:52:44.406
         memset(sum, ' ', 8); // Init with spaces before computing the sum
         typeflag = '0'; // Regular file
         sprintf(sig, "ustar"); // null terminated
