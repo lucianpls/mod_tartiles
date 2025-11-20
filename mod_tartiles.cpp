@@ -94,7 +94,6 @@ struct tarheader_t {
         memcpy(mode, "0000644", 8);
         memcpy(uid, "0001234", 8); // Made up uid/gid
         memcpy(gid, "0001234", 8);
-        memcpy(size,  "00000000000", 12);
         memcpy(mtime, "15106450176", 12); // Friday, November 14, 2025 13:52:44.406
         memcpy(sum, "        ", 8); // 8 spaces for checksum calculation
         typeflag = '0'; // Regular file
@@ -135,7 +134,7 @@ static int handler(request_rec *r)
         return HTTP_BAD_REQUEST;
     auto level = cfg->raster.rsets[aio.l];
     // Box has to be contained in the level
-    if ((aio.r + aio.h >= level.h) || (aio.c + aio.w >= level.w))
+    if ((aio.r + aio.h > level.h) || (aio.c + aio.w > level.w))
         return HTTP_BAD_REQUEST;
     // Reject if too many tiles on either dimension
     if (aio.h > uint64_t(cfg->maxtiles) || aio.w > uint64_t(cfg->maxtiles))
